@@ -1,0 +1,32 @@
+  {Object_Title_and_Purpose}
+  DEBUG_LOG_SIZE = 65536
+  'debug_main = true
+
+CON
+  _clkfreq = 180_000_000
+
+  IO = 0
+  pinCAN_INT    = IO + 4 ' INT
+
+VAR
+  long  stack1[6]
+
+PUB Main() | mask, match
+  mask := decod pinCAN_INT
+  match := decod pinCAN_INT
+  debug("hello ", ubin(mask), ubin(match))
+
+  cogspin(NEWCOG, Collector(), @stack1)
+
+PUB Collector() | cs, clk, sdo, sdi, index
+
+  debug(`LOGIC MyLogic TITLE 'CANBUS I/O' SAMPLES 256 'Index' 1 gray 'CLK' 1 ORANGE 'CS' 1 MAGENTA 'SDO' 1 RED 'SDI' 1 BLUE)
+  repeat
+    index += 1
+    CLK := index // 2
+    CS :=  trunc(getrnd()) // 4
+    SDO := trunc(getrnd()) // 4
+    SDI := trunc(getrnd()) // 4
+    debug(`MyLogic `udec_(index, CLK, CS, SDO, SDI))
+
+  cogstop(CogId())

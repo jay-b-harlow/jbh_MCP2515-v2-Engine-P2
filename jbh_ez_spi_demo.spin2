@@ -1,0 +1,556 @@
+  {Object_Title_and_Purpose}
+  DEBUG_LOG_SIZE = 65536
+  'debug_main = true
+
+CON
+   _clkfreq = 180_000_000
+
+  IO = 0
+
+
+  MODE_NORMAL =   $00 '/* Normal (send and receive messages)               */
+  MODE_SLEEP =    $20 '/* Wait for interrupt                               */
+  MODE_LOOPBACK = $40 '/* Testing - messages stay internal                 */
+  MODE_LISTEN =   $60 '/* Listen only -- don't send                        */
+  MODE_CONFIG =   $80 '/* Configuration (1XX0 0000 is Config)              */
+
+  CANCTRL_OPMOD_BIT_MASK = %111_0_000_0
+  CANCTRL_OICOD_BIT_MASK = %000_0_111_0
+
+
+  pinCAN_SDA    = IO + 0 ' SDA
+  pinCAN_SCL    = IO + 1 ' SCL
+  pinCAN_Tx     = IO + 2 ' TX
+  pinCAN_Rx     = IO + 3 ' RX
+  pinCAN_INT    = IO + 4 ' INT
+  pinCAN_PWM    = IO + 5 ' PWM
+  pinCAN_AN     = IO + 6 ' AN
+  pinCAN_RESET  = IO + 7  ' RST
+
+  pinCAN_CS     = IO + 8  ' CS
+  pinSPI_Clk    = IO + 9  ' SCK
+  pinSPI_MISO   = IO + 10 ' MISO
+  pinSPI_MOSI   = IO + 11 ' MOSI
+
+  ' SPI Instruction Set:
+  ' MCP 2515 commands sent via SPI
+  '   immediately after asserting /CS
+  CMD_RESET          = %1100_0000
+  CMD_READ           = %0000_0011
+  CMD_WRITE          = %0000_0010
+  CMD_READ_STATUS    = %1010_0000
+  CMD_RX_STATUS      = %1011_0000
+  CMD_BIT_MODIFY     = %0000_0101
+  ' For single buffer reads
+  CMD_RTS_TxBFR0  = %1000_0001
+  CMD_RTS_TxBFR1  = %1000_0010
+  CMD_RTS_TxBFR2  = %1000_0100
+
+
+  CMD_RD_RXBFR_BASE  = %1001_0000                       ' CMD_RD_RXBFR_BASE = %1001_0nm0
+  '-------------------------------
+  ' specify one of the following
+  PARM_RD_RX0BF_SIDH = %0000_0000
+  PARM_RD_RX0BF_D0   = %0000_0010
+  PARM_RD_RX1BF_SIDH = %0000_0100
+  PARM_RD_RX1BF_D0   = %0000_0110
+
+
+  CMD_LD_TXBFR_BASE   = %0100_0000                      ' CMD_LD_TX_BFR_BASE = %0100_0abc
+  '-------------------------------
+  ' specify one of the following
+  PARM_LD_TXBFR0_SIDH = %0100_0000
+  PARM_LD_TXBFR0_D0   = %0100_0001
+  PARM_LD_TXBFR1_SIDH = %0100_0010
+  PARM_LD_TXBFR1_D0   = %0100_0011
+  PARM_LD_TXBFR2_SIDH = %0100_0100
+  PARM_LD_TXBFR2_D0   = %0100_0101
+  '-------------------------------
+  ' or-together one of the following...
+  OR_PARM_LD_TXBFR0  = %0000_0000
+  OR_PARM_LD_TXBFR1  = %0000_0010
+  OR_PARM_LD_TXBFR2  = %0000_0100
+  ' with one of the following...
+  OR_PARM_LD_TXBFR_SIDH = %0000_0000
+  OR_PARM_LD_TXBFR_D0   = %0000_0001
+
+
+  ' For multi-buffer reads
+  CMD_RTS_TxBFR_BASE = %1000_0000                      ' CMD_RTS_TxBFR_BASE = %1000_0abc
+  '-------------------------------
+  ' or-together one or more of the following
+  OR_PARM_RTS_TXBFR0  = %0000_0001
+  OR_PARM_RTS_TXBFR1  = %0000_0010
+  OR_PARM_RTS_TXBFR2  = %0000_0100
+
+
+  ' MCP2515 Register Names
+
+  REG_BFPCTRL   = %0000_1100
+  REG_TXRTSCTRL = %0000_1101
+  REG_CANSTAT   = %0000_1110
+  REG_CANCTRL   = %0000_1111
+
+  REG_TEC       = %0001_1100
+  REG_REC       = %0001_1101
+
+  REG_CNF3      = %0010_1000
+  REG_CNF2      = %0010_1001
+  REG_CNF1      = %0010_1010
+  REG_CANINTE   = %0010_1011
+  REG_CANINTF   = %0010_1100
+  REG_EFLG      = %0010_1101
+
+  ' tranmit buffer 0
+  REG_TXB0CTRL  = %0011_0000
+  REG_TXB0SIDH  = %0011_0001
+  REG_TXB0SIDL  = %0011_0010
+  REG_TXB0EID8  = %0011_0011
+  REG_TXB0EID0  = %0011_0100
+  REG_TXB0DLC   = %0011_0101
+  REG_TXB0D0    = %0011_0110
+  REG_TXB0D1    = %0011_0111
+  REG_TXB0D2    = %0011_1000
+  REG_TXB0D3    = %0011_1001
+  REG_TXB0D4    = %0011_1010
+  REG_TXB0D5    = %0011_1011
+  REG_TXB0D6    = %0011_1100
+  REG_TXB0D7    = %0011_1101
+
+  ' tranmit buffer 1
+  REG_TXB1CTRL  = %0100_0000
+  REG_TXB1SIDH  = %0100_0001
+  REG_TXB1SIDL  = %0100_0010
+  REG_TXB1EID8  = %0100_0011
+  REG_TXB1EID0  = %0100_0100
+  REG_TXB1DLC   = %0100_0101
+  REG_TXB1D0    = %0100_0110
+  REG_TXB1D1    = %0100_0111
+  REG_TXB1D2    = %0100_1000
+  REG_TXB1D3    = %0100_1001
+  REG_TXB1D4    = %0100_1010
+  REG_TXB1D5    = %0100_1011
+  REG_TXB1D6    = %0100_1100
+  REG_TXB1D7    = %0100_1101
+
+  ' tranmit buffer 2
+  REG_TXB2CTRL  = %0101_0000
+  REG_TXB2SIDH  = %0101_0001
+  REG_TXB2SIDL  = %0101_0010
+  REG_TXB2EID8  = %0101_0011
+  REG_TXB2EID0  = %0101_0100
+  REG_TXB2DLC   = %0101_0101
+  REG_TXB2D0    = %0101_0110
+  REG_TXB2D1    = %0101_0111
+  REG_TXB2D2    = %0101_1000
+  REG_TXB2D3    = %0101_1001
+  REG_TXB2D4    = %0101_1010
+  REG_TXB2D5    = %0101_1011
+  REG_TXB2D6    = %0101_1100
+  REG_TXB2D7    = %0101_1101
+
+  ' receive buffer 0
+  REG_RXB0CTRL  = %0110_0000
+  REG_RXB0SIDH  = %0110_0001
+  REG_RXB0SIDL  = %0110_0010
+  REG_RXB0EID8  = %0110_0011
+  REG_RXB0EID0  = %0110_0100
+  REG_RXB0DLC   = %0110_0101
+  REG_RXB0D0    = %0110_0110
+  REG_RXB0D1    = %0110_0111
+  REG_RXB0D2    = %0110_1000
+  REG_RXB0D3    = %0110_1001
+  REG_RXB0D4    = %0110_1010
+  REG_RXB0D5    = %0110_1011
+  REG_RXB0D6    = %0110_1100
+  REG_RXB0D7    = %0110_1101
+
+  ' receive buffer 1
+  REG_RXB1CTRL  = %0111_0000
+  REG_RXB1SIDH  = %0111_0001
+  REG_RXB1SIDL  = %0111_0010
+  REG_RXB1EID8  = %0111_0011
+  REG_RXB1EID0  = %0111_0100
+  REG_RXB1DLC   = %0111_0101
+  REG_RXB1D0    = %0111_0110
+  REG_RXB1D1    = %0111_0111
+  REG_RXB1D2    = %0111_1000
+  REG_RXB1D3    = %0111_1001
+  REG_RXB1D4    = %0111_1010
+  REG_RXB1D5    = %0111_1011
+  REG_RXB1D6    = %0111_1100
+  REG_RXB1D7    = %0111_1101
+
+  ' MCP2515 Bit Names for fields/bits within
+  '  bit-addressable registers
+
+  BIT_RDSTATUS_RX0IF   = %0000_0001
+  BIT_RDSTATUS_RX1IF   = %0000_0010
+  BIT_RDSTATUS_TX0REQ  = %0000_0100
+  BIT_RDSTATUS_TX0IF   = %0000_1000
+  BIT_RDSTATUS_TX1REQ  = %0001_0000
+  BIT_RDSTATUS_TX1IF   = %0010_0000
+  BIT_RDSTATUS_TX2REQ  = %0100_0000
+  BIT_RDSTATUS_TX2IF   = %1000_0000
+
+  ' NOTE these BIT_INTF_ def's apply to INTE bits too
+  '  although the name would reflect E vs. F but who cares here?
+  BIT_INTF_RX0IF   = %0000_0001 ' Rx buffer 0 full
+  BIT_INTF_RX1IF   = %0000_0010 ' Rx buffer 1 full
+  BIT_INTF_TX0IF   = %0000_0100 ' Tx buffer 0 empty
+  BIT_INTF_TX1IF   = %0000_1000 ' Tx buffer 1 empty
+  BIT_INTF_TX2IF   = %0001_0000 ' Tx buffer 2 empty
+  BIT_INTF_ERRIF   = %0010_0000 ' multiple sources: see EFLG register
+  BIT_INTF_WAKIF   = %0100_0000 ' Wakeup interrupt
+  BIT_INTF_MERIF   = %1000_0000 ' Message Error
+
+  BIT_EFLG_EWARN  = %0000_0001   ' TEC or REC = or > 96! (in Warning state), auto resets
+  BIT_EFLG_RXWAR  = %0000_0010   ' REC = or > 96! (in WARNING state), auto resets
+  BIT_EFLG_TXWAR  = %0000_0100   ' TEC = or > 96! (in WARNING state), auto resets
+  BIT_EFLG_RXEP   = %0000_1000   ' REC = or > 128! (in ERROR-PASSIVE state), auto resets
+  BIT_EFLG_TXEP   = %0001_0000   ' TEC = or > 128! (in ERROR-PASSIVE state), auto resets
+  BIT_EFLG_TXBO   = %0010_0000   ' TEC at 255! (in BUS-OFF ERROR state), auto resets
+  BIT_EFLG_RX0OVR = %0100_0000   ' Valid message rcvd but Rx0B is full! (so is Rx1B if rollover mode enabled)
+  BIT_EFLG_RX1OVR = %1000_0000   ' Valid message rcvd but Rx1B is full!
+
+  RX0BFS_BIT_MASK = $10
+  RX1BFS_BIT_MASK = $20
+  WAKE_ERROR_INTR_BIT_MASK = $40
+
+
+OBJ
+  spi        : "jbh_ez_spi"
+
+CON
+  TSB_LENGTH = $D
+
+VAR
+  long  stack1[6]
+  long  stack2[6]
+  long  _lockId
+  byte  TSB[TSB_LENGTH]
+
+  byte  m_bStarted
+  byte  m_bTesting
+
+pub Main() | index, mask, match
+  debug("Main starting...")
+
+  mask := decod pinCAN_INT
+  match := decod pinCAN_INT
+  debug(ubin(mask), ubin(match))
+
+  ''repeat while true
+
+  Start()
+
+
+  repeat
+    REPEAT index from 1 to tsb_length
+      TSB[index] := getrnd()
+
+      LoadTxBuffer(PARM_LD_TXBFR0_SIDH, @TSB, TSB_LENGTH)
+
+      RequestToSend(OR_PARM_RTS_TXBFR0)
+
+  debug("Main started...")
+  Stop()
+
+PRI Interrupter()| mask, match
+     debug("Interrupter starting...")
+
+      org
+        setpat pinCAN_INT, 1
+        debug("setpat")
+
+        waitpat
+        debug("waitpat")
+      end
+
+     debug("Interrupter started...")
+
+PRI Start()
+     debug("Start starting...")
+
+  _lockId := LOCKNEW()
+
+  m_bTesting := true
+  m_bStarted := true
+
+  pinh(pinCAN_INT)
+  pinh(pinCAN_RESET)
+
+  pinh(pinCAN_CS)
+
+  spi.start(pinSPI_MISO, pinSPI_MOSI, pinSPI_Clk, 10_000)
+
+  'cogspin(NEWCOG, Collector(), @stack1)
+
+  cogspin(NEWCOG, Interrupter(), @stack2)
+
+'' Send 1st SPI command to initiate SPI handler
+
+''  if CanSetMode(MODE_CONFIG)  ' TODO
+
+    m_bStarted~~                                          ' flag MCP255 handler as STARTED
+
+
+
+  if m_bStarted & m_bTesting
+
+  ' TEST TEST TEST  ---- Hardware turn-on/verification
+
+  '   configure Rx[01]BF for General I/O
+
+  '   trigger interrupt, set Rx0BF then Rx1BF so we can see all three events
+
+  '   on analyzer so we can prove all three lines are working...
+
+
+
+  ' NOTE for production: our POWER-ON self test can do this to ensure our lines are
+
+  '    still working!
+
+    WriteRegister(REG_TXRTSCTRL, $00)                ' make Tx[0-2]RTS simple digital inputs (not used)
+
+    ' TEST make our Rx[01]BF digitial outputs
+
+    WriteRegister(REG_BFPCTRL, $0C)                  ' use $0F for normal operation
+
+    WriteRegister(REG_RXB0CTRL, $24)                 ' set for only StdID Packets and allow roll-over to rx1BF
+
+    WriteRegister(REG_RXB1CTRL, $20)                 ' set for only StdID Packets
+
+    ' TEST turn on Rx0BF bit
+
+    BitModifyRegister(REG_BFPCTRL, RX0BFS_BIT_MASK, RX0BFS_BIT_MASK)
+
+    ' TEST and back off again
+
+    BitModifyRegister(REG_BFPCTRL, RX0BFS_BIT_MASK, 0)
+
+    ' TEST turn on Rx1BF bit
+
+    BitModifyRegister(REG_BFPCTRL, RX1BFS_BIT_MASK, RX1BFS_BIT_MASK)
+
+    ' TEST and back off again
+
+    BitModifyRegister(REG_BFPCTRL, RX1BFS_BIT_MASK, 0)
+
+    ' TEST leave both bits on (so lines look de-asserted)
+
+    BitModifyRegister(REG_BFPCTRL, RX0BFS_BIT_MASK|RX1BFS_BIT_MASK, RX0BFS_BIT_MASK|RX1BFS_BIT_MASK)
+
+    ' TEST enable interrupt
+
+    BitModifyRegister(REG_CANINTE, WAKE_ERROR_INTR_BIT_MASK, WAKE_ERROR_INTR_BIT_MASK)
+
+    ' TEST assert interrupt
+
+    BitModifyRegister(REG_CANINTF, WAKE_ERROR_INTR_BIT_MASK, WAKE_ERROR_INTR_BIT_MASK)
+
+    ' TEST and deassert
+
+    BitModifyRegister(REG_CANINTF, WAKE_ERROR_INTR_BIT_MASK, 0)
+
+     ' TEST and disable interrupt
+
+    BitModifyRegister(REG_CANINTE, WAKE_ERROR_INTR_BIT_MASK, 0)
+
+    ' now transition to loopback mode (no effect on CAN bus) for testing...
+
+    ' CanSetMode(MODE_LOOPBACK)
+
+
+
+  elseif m_bStarted
+
+
+
+    WriteRegister(REG_TXRTSCTRL, $00)                ' make Tx[0-2]RTS simple digital inputs (not used)
+
+    ' Make our Rx[01]BF interrupt requests
+
+    WriteRegister(REG_BFPCTRL, $0F)                  ' use $0C for test operation
+
+    WriteRegister(REG_RXB0CTRL, $24)                 ' set for only StdID Packets and allow roll-over to rx1BF
+
+    WriteRegister(REG_RXB1CTRL, $20)                 ' set for only StdID Packets
+
+    WriteRegister(REG_CANINTF, $00)                  ' Clear any pending interrupts
+
+    WriteRegister(REG_CANINTE, $BC)                  ' Enable only $80 MsgErr, $20 ErrInt, and $1c Tx[0-2]IE bits
+
+    ' our command interface should direct any further setup/changes... we're done...
+
+
+
+    ' and let's start our receiver/transmitter
+
+    '' := cogspin(0, CANreceiveHandler(), @m_nRxStack) + 1 ' TODO:
+
+  debug("Start started...")
+
+
+PRI Stop()
+  LOCKRET(_lockId)
+
+  _lockId := 0
+
+PRI EnterLock()
+  REPEAT until LOCKTRY(_lockId)
+  waitms(50)
+
+PRI ReleaseLock()
+  waitms(50)
+  LOCKREL(_lockId)
+
+'PRI Collector() | cs, clk, sdo, sdi, index
+
+  'debug(`LOGIC MyLogic TITLE 'CANBUS I/O' SAMPLES 256 bytes_1bit 'Index' 1 gray 'CLK' 1 ORANGE 'CS' 1 MAGENTA 'SDO' 1 RED 'SDI' 1 BLUE)
+  'repeat
+  ' index += 1
+  ' CLK := pinread(pinSPI_Clk)
+  ' CS :=  pinread(pinCAN_CS)
+  ' SDO := pinread(pinSPI_MISO)
+  ' SDI := pinread(pinSPI_MOSI)
+  ' debug(`MyLogic `udec_(index, CLK, CS, SDO, SDI))s
+
+
+PRI Reset()
+
+' The /RESET line is NOT available, let's send a command to reset the MCP2515 chip
+
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, CMD_RESET, 8)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB SetMode(nMode) | lastMode, newMode
+  BitModifyRegister(REG_CANCTRL, CANCTRL_OPMOD_BIT_MASK, ((nMode & %111) << 5))
+
+PUB ReadRegister(nRegAddr) : result
+
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, (CMD_READ << 8) | (nRegAddr & $7F), 16)
+  result := spi.shiftin(spi.MSBFIRST, 8)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB ReadRegisterSequence(nRegAddr, pDataBffr, nRegCount) : result
+
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, (CMD_READ << 8) | (nRegAddr & $7F), 16)
+  result := spi.shiftinSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB ReadRxBuffer(nRxBffr, pDataBffr, nRegCount) : result
+  '' specify one of the following
+  ''PARM_RD_RX0BF_SIDH = %0000_0000
+  ''PARM_RD_RX0BF_D0  = %0000_0010
+  ''PARM_RD_RX1BF_SIDH = %0000_0100
+  ''PARM_RD_RX1BF_D0  = %0000_0110
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, CMD_RD_RXBFR_BASE | (nRxBffr & %111), 8)
+  result := spi.shiftinSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB WriteRegister(nRegAddr, nRegValue)
+  EnterLock()
+  pinl(pinCAN_CS)
+  spi.shiftout(spi.MSBFIRST, (CMD_WRITE << 16) | ((nRegAddr & $7F) << 8) | (nRegValue & $FF), 16)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB WriteRegisterSequence(nRegAddr, pDataBffr, nRegCount)
+  EnterLock()
+  pinl(pinCAN_CS)
+  spi.shiftout(spi.MSBFIRST, (CMD_WRITE << 16) | ((nRegAddr & $7F) << 8), 16)
+  spi.shiftoutSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB LoadTxBuffer(nTxBffr, pDataBffr, nRegCount)
+  '' specify one of the following
+  ''PARM_LD_TXBFR0_SIDH         = %0100_0000
+  ''PARM_LD_TXBFR0_D0           = %0100_0001
+  ''PARM_LD_TXBFR1_SIDH         = %0100_0010
+  ''PARM_LD_TXBFR1_D0           = %0100_0011
+  ''PARM_LD_TXBFR2_SIDH         = %0100_0100
+  ''PARM_LD_TXBFR2_D0           = %0100_0101
+  ''-------------------------------
+  '' or-together one of the following...
+  ''OR_PARM_LD_TXBFR0           = %0000_0000
+  ''OR_PARM_LD_TXBFR1           = %0000_0010
+  ''OR_PARM_LD_TXBFR2           = %0000_0100
+  '' with one of the following...
+  ''OR_PARM_LD_TXBFR_SIDH       = %0000_0000
+  ''OR_PARM_LD_TXBFR_D0         = %0000_0001
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, CMD_LD_TXBFR_BASE | (nTxBffr & %0100_0111), 8)
+  spi.shiftoutSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB RequestToSend(nTxBffrSet)
+  ''-------------------------------
+  '' or-together one or more of the following
+  '' OR_PARM_RTS_TXBFR0 = %0000_0001
+  '' OR_PARM_RTS_TXBFR1 = %0000_0010
+  '' OR_PARM_RTS_TXBFR2 = %0000_0100
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, CMD_RTS_TxBFR_BASE | (nTxBffrSet & %111), 8)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB ReadStatus()
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, CMD_READ_STATUS, 8)
+  '' TODO: return results
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB RxStatus()
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, CMD_RX_STATUS, 8)
+  '' TODO: return results
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
+
+PUB BitModifyRegister(nRegAddr, nRegMask, nRegValue)
+  EnterLock()
+  pinl(pinCAN_CS)
+
+  spi.shiftout(spi.MSBFIRST, (CMD_BIT_MODIFY << 24) | ((nRegAddr & $7F) << 16) | ((nRegMask & $FF) << 8) | (nRegValue & $FF), 32)
+
+  pinh(pinCAN_CS)
+  ReleaseLock()
