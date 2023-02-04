@@ -218,64 +218,55 @@ CON
   WAKE_ERROR_INTR_BIT_MASK = $40
 
 
+  BIT_TXB_ABTF  = %01
+  BIT_TXB_MLOA  = %001
+  BIT_TXB_TXERR
+  BIT_TXB_TXREQ
+  BIT_TXB_TXP   = %0000_0000
+
+
+
+
+
 OBJ
   spi        : "jbh_ez_spi"
 
 CON
-  TSB_LENGTH = $D
+  TSB_Length = $D
 
 VAR
+  word  TSB[TSB_Length]
+
   long  stack1[6]
   long  stack2[6]
   long  _lockId
-  byte  TSB[TSB_LENGTH]
 
   byte  m_bStarted
   byte  m_bTesting
 
-pub Main() | index, mask, match
-  debug("Main starting...")
 
-  mask := decod pinCAN_INT
-  match := decod pinCAN_INT
-  debug(ubin(mask), ubin(match))
-
-  ''repeat while true
-
-  Start()
+PRI Interrupter() | mask, match, TXB0CTRL
+  debug("Interrupter starting...")
 
 
-  repeat
-    REPEAT index from 1 to tsb_length
-      TSB[index] := getrnd()
-
-      LoadTxBuffer(PARM_LD_TXBFR0_SIDH, @TSB, TSB_LENGTH)
-
-      RequestToSend(OR_PARM_RTS_TXBFR0)
-
-  debug("Main started...")
-  Stop()
-
-PRI Interrupter()| mask, match
-     debug("Interrupter starting...")
-
-      org
-        setpat pinCAN_INT, 1
+  org
+        setpat mask, match
         debug("setpat")
 
         waitpat
         debug("waitpat")
-      end
+  end
 
-     debug("Interrupter started...")
+  debug("Interrupter started...")
 
-PRI Start()
+PUB Start()
      debug("Start starting...")
 
   _lockId := LOCKNEW()
 
   m_bTesting := true
   m_bStarted := true
+
 
   pinh(pinCAN_INT)
   pinh(pinCAN_RESET)
@@ -288,9 +279,9 @@ PRI Start()
 
   cogspin(NEWCOG, Interrupter(), @stack2)
 
-'' Send 1st SPI command to initiate SPI handler
+' Send 1st SPI command to initiate SPI handler
 
-''  if CanSetMode(MODE_CONFIG)  ' TODO
+'  if CanSetMode(MODE_CONFIG)  ' TODO
 
     m_bStarted~~                                          ' flag MCP255 handler as STARTED
 
@@ -384,11 +375,9 @@ PRI Start()
 
     ' our command interface should direct any further setup/changes... we're done...
 
-
-
     ' and let's start our receiver/transmitter
 
-    '' := cogspin(0, CANreceiveHandler(), @m_nRxStack) + 1 ' TODO:
+    ' := cogspin(0, CANreceiveHandler(), @m_nRxStack) + 1 ' TODO:
 
   debug("Start started...")
 
@@ -425,7 +414,7 @@ PRI Reset()
   EnterLock()
   pinl(pinCAN_CS)
 
-  spi.shiftout(spi.MSBFIRST, CMD_RESET, 8)
+  spi.shiftcmd(CMD_RESET, 8)
 
   pinh(pinCAN_CS)
   ReleaseLock()
@@ -433,24 +422,19 @@ PRI Reset()
 PUB SetMode(nMode) | lastMode, newMode
   BitModifyRegister(REG_CANCTRL, CANCTRL_OPMOD_BIT_MASK, ((nMode & %111) << 5))
 
-PUB ReadRegister(nRegAddr) : result
+PUB ReadRegister(nRegAddr) : result | index, pDataBffr[1]
+  debug("ReadRegister ", ubin(nRegAddr))
+  ReadRegisterSequence(nRegAddr, @tsb, 1)
+  debug("ReadRegisterSequence ", ubin(nRegAddr), uhex(pDataBffr))
+  return byte[pDataBffr][0]
+
+PUB ReadRegisterSequence(nRegAddr, pDataBffr, nRegCount)
 
   EnterLock()
   pinl(pinCAN_CS)
-
-  spi.shiftout(spi.MSBFIRST, (CMD_READ << 8) | (nRegAddr & $7F), 16)
-  result := spi.shiftin(spi.MSBFIRST, 8)
-
-  pinh(pinCAN_CS)
-  ReleaseLock()
-
-PUB ReadRegisterSequence(nRegAddr, pDataBffr, nRegCount) : result
-
-  EnterLock()
-  pinl(pinCAN_CS)
-
-  spi.shiftout(spi.MSBFIRST, (CMD_READ << 8) | (nRegAddr & $7F), 16)
-  result := spi.shiftinSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+  debug("ReadRegisterSequence ", ubin(nRegAddr), uhex(pDAtaBffr), udec(nRegCount))
+  spi.shiftcmd((CMD_READ << 8) | (nRegAddr & $7F), 16)
+  spi.shiftout(pDataBffr, nRegCount)
 
   pinh(pinCAN_CS)
   ReleaseLock()
@@ -464,25 +448,22 @@ PUB ReadRxBuffer(nRxBffr, pDataBffr, nRegCount) : result
   EnterLock()
   pinl(pinCAN_CS)
 
-  spi.shiftout(spi.MSBFIRST, CMD_RD_RXBFR_BASE | (nRxBffr & %111), 8)
-  result := spi.shiftinSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+  spi.shiftcmd(CMD_RD_RXBFR_BASE | (nRxBffr & %111), 8)
+  spi.shiftout(pDataBffr, nRegCount)
 
   pinh(pinCAN_CS)
   ReleaseLock()
 
-PUB WriteRegister(nRegAddr, nRegValue)
-  EnterLock()
-  pinl(pinCAN_CS)
-  spi.shiftout(spi.MSBFIRST, (CMD_WRITE << 16) | ((nRegAddr & $7F) << 8) | (nRegValue & $FF), 16)
-
-  pinh(pinCAN_CS)
-  ReleaseLock()
+PUB WriteRegister(nRegAddr, nRegValue) | pDataBffr[1]
+  byte[pDataBffr][0] := nRegValue
+  WriteRegisterSequence(nRegAddr, @pDataBffr, 1)
 
 PUB WriteRegisterSequence(nRegAddr, pDataBffr, nRegCount)
   EnterLock()
   pinl(pinCAN_CS)
-  spi.shiftout(spi.MSBFIRST, (CMD_WRITE << 16) | ((nRegAddr & $7F) << 8), 16)
-  spi.shiftoutSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+  spi.shiftcmd((CMD_WRITE << 8) | ((nRegAddr & $7F)), 16)
+  spi.shiftout(pDataBffr, nRegCount)
+
 
   pinh(pinCAN_CS)
   ReleaseLock()
@@ -506,8 +487,8 @@ PUB LoadTxBuffer(nTxBffr, pDataBffr, nRegCount)
   EnterLock()
   pinl(pinCAN_CS)
 
-  spi.shiftout(spi.MSBFIRST, CMD_LD_TXBFR_BASE | (nTxBffr & %0100_0111), 8)
-  spi.shiftoutSequence(spi.MSBFIRST, pDataBffr, nRegCount)
+  spi.shiftcmd(CMD_LD_TXBFR_BASE | (nTxBffr & %0100_0111), 8)
+  spi.shiftout(pDataBffr, nRegCount)
 
   pinh(pinCAN_CS)
   ReleaseLock()
@@ -521,26 +502,28 @@ PUB RequestToSend(nTxBffrSet)
   EnterLock()
   pinl(pinCAN_CS)
 
-  spi.shiftout(spi.MSBFIRST, CMD_RTS_TxBFR_BASE | (nTxBffrSet & %111), 8)
+  spi.shiftcmd(CMD_RTS_TxBFR_BASE | (nTxBffrSet & %111), 8)
 
   pinh(pinCAN_CS)
   ReleaseLock()
 
-PUB ReadStatus()
+PUB ReadStatus(pDataBffr, nRegCount)
   EnterLock()
   pinl(pinCAN_CS)
 
-  spi.shiftout(spi.MSBFIRST, CMD_READ_STATUS, 8)
+  spi.shiftcmd(CMD_READ_STATUS, 8)
+  spi.shiftout(pDataBffr, nRegCount)
   '' TODO: return results
 
   pinh(pinCAN_CS)
   ReleaseLock()
 
-PUB RxStatus()
+PUB RxStatus(pDataBffr, nRegCount)
   EnterLock()
   pinl(pinCAN_CS)
 
-  spi.shiftout(spi.MSBFIRST, CMD_RX_STATUS, 8)
+  spi.shiftcmd(CMD_RX_STATUS, 8)
+  spi.shiftout(pDataBffr, nRegCount)
   '' TODO: return results
 
   pinh(pinCAN_CS)
@@ -550,7 +533,7 @@ PUB BitModifyRegister(nRegAddr, nRegMask, nRegValue)
   EnterLock()
   pinl(pinCAN_CS)
 
-  spi.shiftout(spi.MSBFIRST, (CMD_BIT_MODIFY << 24) | ((nRegAddr & $7F) << 16) | ((nRegMask & $FF) << 8) | (nRegValue & $FF), 32)
+  spi.shiftcmd((CMD_BIT_MODIFY << 24) | ((nRegAddr & $7F) << 16) | ((nRegMask & $FF) << 8) | (nRegValue & $FF), 32)
 
   pinh(pinCAN_CS)
   ReleaseLock()

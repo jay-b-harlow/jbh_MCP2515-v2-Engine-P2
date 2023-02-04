@@ -97,15 +97,106 @@ pub stop()
 
   longfill(@sdi, -1, 3)                                         ' mark pins as unused
 
+pub shiftcmd(cmd, bits)
+  debug("shiftcmd starting ", ubin(cmd), udec(bits))
 
-pub shiftin(mode, bits) : value
+'' Shift data out to a synchronous serial device
+'' -- cmd is shifted out
+'' -- bits in the number of bits to shift
+
+  if (sdo < 0)                                                  ' abort if do not defined
+    return
+
+  if (bits < 32)                                              ' adjust alignment if needed
+    cmd <<= (32-bits)
+  cmd rev= 31
+
+  wxpin(sdo, %1_00000 | (bits-1))                               ' configure do bits
+  wypin(sdo, cmd)                                               ' load value
+  pinl(sdo)                                                     ' enable do
+  wypin(sck, bits)                                              ' start clocking data
+  repeat until pinr(sck)                                        ' wait for clocking to finish
+  pinf(sdo)                                                     ' disable do
+  debug("shiftcmd finished")
+
+
+PUB Something(pDataBffr, nRegCount) | _sdo, _sdi, index
+  debug("Something starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
+
+  if (sdo < 0)                                                  ' abort if do not defined
+    return
+
+  if (bits < 32)                                              ' adjust alignment if needed
+    cmd <<= (32-bits)
+  cmd rev= 31
+
+  wxpin(sdo, %1_00000 | (bits-1))                               ' configure do bits
+  wypin(sdo, cmd)                                               ' load value
+  pinl(sdo)                                                     ' enable do
+  wypin(sck, bits)                                              ' start clocking data
+  repeat until pinr(sck)                                        ' wait for clocking to finish
+  pinf(sdo)                                                     ' disable do
+
+  _sdo := sdo ' #1
+  _sdi := sdi ' #0
+
+  ptra := pDataBffr
+
+
+' 10M baud 8-bit serial demo
+
+          org
+
+                rdbyte  x, ptra
+                wypin   x, _sdi           'send initial byte to tx pin
+                debug(".loop start ", uhex(ptra), udec(x))
+.loop   '       waitx   #200            'uncomment for delay between bytes
+
+.full           testp   _sdi      wc      'wait for buffer empty on tx pin
+          'debug(".full ", uhex(ptra), udec(x))
+        if_nc   jmp     #.full
+
+                incmod  ptra, #$FF          'increment byte
+
+                rdbyte  x, ptra
+                wypin   x,_sdi            'send next byte to tx pin
+                debug(".full ", uhex(ptra), udec(x))
+
+
+.recv           testp   _sdo      wc      'wait for smart pin 1 to signal rx data received
+        if_nc   jmp     #.recv
+
+                rdpin   y,_sdo            'get data from rx pin
+                shr     y,#32-8
+
+                wrbyte  y, ptra         'write rx data
+
+                outnot  _sdo            'make scope trigger on pin 1 (since smart pin 1 is
+                outnot  _sdo            '...reading pin 0, pin 1 is still usable for normal output)
+
+                djnz     nRegCount, #.loop          'loop
+                ret
+
+pm_tx           long    %0000_0000_000_0000000000000_01_11110_0 'async tx mode, output enabled for smart output
+pm_rx           long    %0111_0000_000_0000000000000_01_11111_0 'async rx mode, output enabled for normal output, inputs pin 0
+
+bitper          long    8<<16 + 7       'number of clocks per bit period, 3..65536, 8-bit words
+x               long    0
+y               long    0
+          END
+  debug("Something finished")
+
+pub shiftin(pDataBffr, nRegCount)| index, mode, bits
+  debug("shiftin starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
 '' Shift data in from a synchronous serial device
 '' -- mode is bit order: LSBFIRST or MSBFIRST
 '' -- bits in the number of bits to shift
-
+  bits := 8
+  mode := MSBFIRST
+  index := 0
   if (sdi < 0)                                                  ' abort if di not defined
-    return 0
+    return
 
   pinf(sdi)                                                     ' reset di
   wxpin(sdi, %0_00000 | (bits-1))                               ' configure di sampling/bits
@@ -113,26 +204,26 @@ pub shiftin(mode, bits) : value
   wypin(sck, bits)                                              ' start clocking data
   repeat until pinr(sck)                                        ' wait until clocks finished
 
-  value := rdpin(sdi)                                           ' get value
+  byte[pDataBffr][index] := rdpin(sdi)                                           ' get byte[pDataBffr][index]
 
   if (mode == LSBFIRST)
-    value >>= (32-bits)                                         ' align lsb
+    byte[pDataBffr][index] >>= (32-bits)                                         ' align lsb
   else
-    value rev= 31                                               ' flip to align lsb
+    byte[pDataBffr][index] rev= 31                                               ' flip to align lsb
     if (bits < 32)                                              ' clear unused bits
-      value zerox= (bits-1)
+      byte[pDataBffr][index] zerox= (bits-1)
+  debug("shiftin finished")
 
-pub shiftinSequence(mode, pDataBffr, nRegCount) : value | index
-  debug("shiftin  ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
-    byte[pDataBffr][index++] := shiftin(mode, 8)
 
-pub shiftout(mode, value, bits)
 
+pub shiftout(pDataBffr, nRegCount) | mode, bits, value, index
+  debug("shiftout starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 '' Shift data out to a synchronous serial device
 '' -- mode is bit order: LSBFIRST or MSBFIRST
 '' -- value is shifted out
 '' -- bits in the number of bits to shift
-
+  mode := MSBFIRST
+  bits := 8
   if (sdo < 0)                                                  ' abort if do not defined
     return
 
@@ -147,20 +238,19 @@ pub shiftout(mode, value, bits)
   wypin(sck, bits)                                              ' start clocking data
   repeat until pinr(sck)                                        ' wait for clocking to finish
   pinf(sdo)                                                     ' disable do
+  debug("shiftout finished")
 
-pub shiftoutSequence(mode, pDataBffr, nRegCount) | index
-  debug("shiftout ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
-  repeat nRegCount
-    shiftout(mode, byte[pDataBffr][index++], 8)
-
-pub shiftio(mode, outval, bits) : inval
+pub shiftio(pDataBffr, nRegCount) | mode, bits, inval, outval, index
+  debug("shiftio starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
 '' Shift outval to a synchronous serial device while receiving inval
 '' -- mode is bit order: LSBFIRST or MSBFIRST
 '' -- bits in the number of bits to shift
+  mode := MSBFIRST
+  bits := 8
 
   if ((sdi < 0) || (sdo < 0))                                   ' abort if di and do not defined
-    return 0
+    return
 
   if (mode == MSBFIRST)
     if (bits < 32)                                              ' adjust alignment if needed
@@ -185,7 +275,7 @@ pub shiftio(mode, outval, bits) : inval
     inval rev= 31                                               ' flip to align lsb
     if (bits < 32)                                              ' clear unused bits
       inval zerox= (bits-1)
-
+  debug("shiftcio finished")
 
 con { license }
 

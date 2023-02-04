@@ -1,0 +1,258 @@
+  {Object_Title_and_Purpose}
+  DEBUG_LOG_SIZE = 65536
+  'debug_main = true
+
+CON
+   _clkfreq = 180_000_000
+
+
+OBJ
+  canbus: "jbh_MCP2515-Engine-P2"
+
+CON
+  TSB_LENGTH = $D
+
+VAR
+  byte  TSB[TSB_LENGTH]
+
+PUB Main()
+  canbus.start()
+
+  CopyTxBuffer()
+
+  'TestRequestToSend()
+  'TestReadRxBuffer()
+
+  debug("done...")
+
+PUB CopyTxBuffer(): register
+  register := canbus.ReadRegister(canbus.REG_CANCTRL)
+  DEBUG(if(true), uhex(register), UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+'  canbus.ReadRegisterSequence(canbus.REG_CANCTRL, @TSB, TSB_Length)
+'  DEBUG(if(true), uhex(register), UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+PUB PopulateBuffer(pDataBffr, nRegCount) | index
+  index := 0
+  repeat nRegCount
+    byte[pDataBffr][index++] := getrnd()
+
+PUB TestSetMode()
+
+  'Reset()
+  'SetMode(MODE_NORMAL)
+  'DumpRegisters(@"MODE_NORMAL")
+
+  'Reset()
+  'SetMode(MODE_SLEEP)
+  'DumpRegisters(@"MODE_SLEEP")
+
+  'Reset()
+  'SetMode(MODE_LOOPBACK)
+  'DumpRegisters(@"MODE_LOOPBACK")
+
+  'BitModifyRegister(canbus.REG_CANCTRL, %0000_0011, %0000_0011)
+  'canbus.WriteRegister(canbus.REG_CANCTRL, %0000_0011)
+  'DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANCTRL)))
+
+  'BitModifyRegister(canbus.REG_CANCTRL, %0000_0100, %0000_0100)
+  'canbus.WriteRegister(canbus.REG_CANCTRL, %0000_0100)
+  'DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANCTRL)))
+
+  'BitModifyRegister(canbus.REG_CANCTRL, %0000_1000, %0000_1000)
+  'canbus.WriteRegister(canbus.REG_CANCTRL, %0000_1000)
+  'DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANCTRL)))
+
+  'BitModifyRegister(canbus.REG_CANCTRL, %0001_0000, %0001_0000)
+  'canbus.WriteRegister(canbus.REG_CANCTRL, %0001_0000)
+  'DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANCTRL)))
+
+  'BitModifyRegister(canbus.REG_CANCTRL, %1110_0000, %1110_0000)
+  'canbus.WriteRegister(canbus.REG_CANCTRL, %1110_0000)
+  'DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANCTRL)))
+
+  'Reset()
+  'SetMode(MODE_LISTEN)
+  'DumpRegisters(@"MODE_LISTEN")
+
+  'Reset()
+  'SetMode(MODE_CONFIG)
+  'DumpRegisters(@"MODE_CONFIG")
+
+
+PUB TestReadRxBuffer()
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.ReadRxBuffer(canbus.PARM_RD_RX0BF_SIDH, @TSB, TSB_LENGTH)
+  debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.ReadRxBuffer(canbus.PARM_RD_RX0BF_D0, @TSB, TSB_LENGTH)
+  debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.ReadRxBuffer(canbus.PARM_RD_RX1BF_SIDH, @TSB, TSB_LENGTH)
+  debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.ReadRxBuffer(canbus.PARM_RD_RX1BF_D0, @TSB, TSB_LENGTH)
+  debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+PUB TestRequestToSend()
+  canbus.RequestToSend(canbus.OR_PARM_RTS_TXBFR0)
+
+  canbus.RequestToSend(canbus.OR_PARM_RTS_TXBFR1)
+
+  canbus.RequestToSend(canbus.OR_PARM_RTS_TXBFR2)
+
+PUB TestSomeThing()
+  canbus.ReadRegister(9)
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.WriteRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.LoadTxBuffer(canbus.PARM_LD_TXBFR0_SIDH, @TSB, TSB_LENGTH)
+  debug("LoadTxBuffer ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.LoadTxBuffer(canbus.PARM_LD_TXBFR0_D0, @TSB, TSB_LENGTH)
+  debug("LoadTxBuffer ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.LoadTxBuffer(canbus.PARM_LD_TXBFR1_SIDH, @TSB, TSB_LENGTH)
+  debug("LoadTxBuffer ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.LoadTxBuffer(canbus.PARM_LD_TXBFR1_D0, @TSB, TSB_LENGTH)
+  debug("LoadTxBuffer ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.LoadTxBuffer(canbus.PARM_LD_TXBFR2_SIDH, @TSB, TSB_LENGTH)
+  debug("LoadTxBuffer ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  PopulateBuffer(@TSB, TSB_LENGTH)
+  canbus.LoadTxBuffer(canbus.PARM_LD_TXBFR2_D0, @TSB, TSB_LENGTH)
+  debug("LoadTxBuffer ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+PUB TestThis() : index
+
+  index := 0
+  repeat TSB_LENGTH
+    tsb[index++] := index * 8
+  debug("initized ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  canbus.WriteRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  bytefill(@TSB, $00, TSB_LENGTH)
+  debug("bytefill ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  'canbus.WriteRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  'debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  canbus.ReadRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  debug("read     ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  'canbus.WriteRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  'debug("write    ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  'canbus.WriteRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  'debug("write #2 ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  'canbus.ReadRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  'debug("read     ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+  'debug("read  #2 ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  'canbus.ReadRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  'debug("write #2 ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  'canbus.ReadRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  'debug("write #2 ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+
+  'canbus.ReadRegisterSequence(canbus.REG_TXB0SIDH, @TSB, TSB_LENGTH)
+  'debug("read  #2 ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  ' write test
+  canbus.WriteRegister(canbus.REG_TXB0SIDH, $01)
+  canbus.WriteRegister(canbus.REG_TXB0SIDL, $02)
+  canbus.WriteRegister(canbus.REG_TXB0EID8, $03)
+  canbus.WriteRegister(canbus.REG_TXB0EID0, $04)
+  canbus.WriteRegister(canbus.REG_TXB0DLC, $05)
+  canbus.WriteRegister(canbus.REG_TXB0D0, $06)
+  canbus.WriteRegister(canbus.REG_TXB0D1, $07)
+  canbus.WriteRegister(canbus.REG_TXB0D2, $08)
+  canbus.WriteRegister(canbus.REG_TXB0D3, $09)
+  canbus.WriteRegister(canbus.REG_TXB0D4, $0A)
+  canbus.WriteRegister(canbus.REG_TXB0D5, $0B)
+  canbus.WriteRegister(canbus.REG_TXB0D6, $0C)
+  canbus.WriteRegister(canbus.REG_TXB0D7, $0D)
+
+  'read test
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1SIDH)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1SIDL)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1EID8)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1EID0)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1DLC)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D0)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D1)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D2)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D3)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D4)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D5)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D6)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1D7)))
+
+
+
+
+PRI DumpRegisters(sequenceName)
+  DEBUG(zstr(sequenceName))
+
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANCTRL)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANSTAT)))
+
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TEC)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_REC)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CNF1)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CNF2)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CNF3)))
+
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANINTE)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_CANINTF)))
+
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_EFLG)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_BFPCTRL)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_RXB0CTRL)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_RXB1CTRL)))
+
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXRTSCTRL)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB0CTRL)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB1CTRL)))
+  DEBUG(UBIN(canbus.ReadRegister(canbus.REG_TXB2CTRL)))
+
+'TABLE 11-1: CAN CONTROLLER REGISTER MAP
+'TABLE 11-2: CONTROL REGISTER SUMMARY
+'Lower
+'Address
+'Bits
+'Higher Order Address Bits
+'      0000 xxxx 0001 xxxx 0010 xxxx 0011 xxxx 0100 xxxx 0101 xxxx 0110 xxxx 0111 xxx
+
+' 0  0 RXF0SIDH  RXF3SIDH RXM0SIDH TXB0CTRL TXB1CTRL TXB2CTRL RXB0CTRL RXB1CTRL
+' 1  1 RXF0SIDL  RXF3SIDL RXM0SIDL TXB0SIDH TXB1SIDH TXB2SIDH RXB0SIDH RXB1SIDH
+' 2  2 RXF0EID8  RXF3EID8 RXM0EID8 TXB0SIDL TXB1SIDL TXB2SIDL RXB0SIDL RXB1SIDL
+' 3  3 RXF0EID0  RXF3EID0 RXM0EID0 TXB0EID8 TXB1EID8 TXB2EID8 RXB0EID8 RXB1EID8
+' 4  4 RXF1SIDH  RXF4SIDH RXM1SIDH TXB0EID0 TXB1EID0 TXB2EID0 RXB0EID0 RXB1EID0
+' 5  5 RXF1SIDL  RXF4SIDL RXM1SIDL TXB0DLC  TXB1DLC  TXB2DLC  RXB0DLC  RXB1DLC
+' 6  6 RXF1EID8  RXF4EID8 RXM1EID8 TXB0D0   TXB1D0   TXB2D0   RXB0D0   RXB1D0
+' 7  7 RXF1EID0  RXF4EID0 RXM1EID0 TXB0D1   TXB1D1   TXB2D1   RXB0D1   RXB1D1
+' 8  8 RXF2SIDH  RXF5SIDH CNF3     TXB0D2   TXB1D2   TXB2D2   RXB0D2   RXB1D2
+' 9  9 RXF2SIDL  RXF5SIDL CNF2     TXB0D3   TXB1D3   TXB2D3   RXB0D3   RXB1D3
+' A 10 RXF2EID8  RXF5EID8 CNF1     TXB0D4   TXB1D4   TXB2D4   RXB0D4   RXB1D4
+' B 11 RXF2EID0  RXF5EID0 CANINTE  TXB0D5   TXB1D5   TXB2D5   RXB0D5   RXB1D5
+' C 12 BFPCTRL   TEC      CANINTF  TXB0D6   TXB1D6   TXB2D6   RXB0D6   RXB1D6
+' D 13 TXRTSCTRL REC      EFLG     TXB0D7   TXB1D7   TXB2D7   RXB0D7   RXB1D7
+' E 14 CANSTAT   CANSTAT  CANSTAT  CANSTAT  CANSTAT  CANSTAT  CANSTAT  CANSTAT
+' F 15 CANCTRL   CANCTRL  CANCTRL  CANCTRL  CANCTRL  CANCTRL  CANCTRL  CANCTRL
