@@ -46,20 +46,20 @@ PUB Main()
 
   pinh(pinCAN_CS)
 
-  DEBUG("shiftcmd ")
-  spi.shiftcmd((CMD_READ << 8) | (REG_CANCTRL & $7F), 16)
+  'DEBUG("shiftcmd ")
+  'spi.shiftcmd((CMD_READ << 8) | (REG_CANCTRL & $7F), 16)
 
   debug("Something ")
   spi.Something(@TSB, TSB_LENGTH)
 
-  debug("shiftin " )
-  spi.shiftin(@TSB, TSB_LENGTH)
+  'debug("shiftin " )
+  'spi.shiftin(@TSB, TSB_LENGTH)
 
-  debug("shiftout ")
-  spi.shiftout(@TSB, TSB_LENGTH)
+  'debug("shiftout ")
+  'spi.shiftout(@TSB, TSB_LENGTH)
 
-  debug("shiftio ")
-  spi.shiftio(@TSB, TSB_LENGTH)
+  'debug("shiftio ")
+  'spi.shiftio(@TSB, TSB_LENGTH)
 
   pinl(pinCAN_CS)
   debug("done...")
