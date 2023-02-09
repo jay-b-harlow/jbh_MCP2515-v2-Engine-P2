@@ -1,6 +1,7 @@
 ' =================================================================================================
 ''
-''   File....... jbh_ez_spi.spin2
+''   File....... jbh_sdi_sequence_shifter.spin2
+
 ''   Purpose.... Smart pin Mode 0 SPI routines
 ''               added support for variable length parameter arrays
 ''   Author..... Jay B. Harlow
@@ -131,7 +132,7 @@ pub shiftcmd(cmd, bits)
   debug("shiftcmd finished")
 
 
-PUB shiftinsequence(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, t1, t2, t3
+PUB shiftinsequence(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, t1, t2, t3, t4
   debug("shiftinsequence starting ", udec(t1), UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
   if (sdo < 0)                                                  ' abort if do not defined
@@ -152,39 +153,29 @@ PUB shiftinsequence(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, t1, t2, t3
   t1 := 0
 
   wxpin(sdo, %1_00000 | (bits-1))                               ' configure do bits
+  bytemove(t4, ptra, 1)
   wypin(sdo, ptra)                                              ' load value
   pinl(sdo)                                                     ' enable do
   wypin(sck, nRegCount * 8)
 
   org
-uart_main     testb     _sdo, #31                      wc      ' rx in use?
-              incmod    t1, #$7F
-              'debug(udec(_sdo), udec(_sdi), udec(_sck), udec(t1))
-  if_nc       call      #rx_serial
+uart_main
+.loop   '       waitx   #200            'uncomment for delay between bytes
 
-              testb     _sdi, #31                      wc      ' tx in use?
-  if_nc       call      #tx_serial
+.full           testp   #0      wc      'wait for buffer empty on tx pin
+        if_nc   jmp     #.full
+              incmod    ptra, #$7F
+              debug("tx_serial", udec(t1), uhex(ptra))
+.recv           testp   #1      wc      'wait for smart pin 1 to signal rx data received
+        if_nc   jmp     #.recv
 
+              incmod    ptra, #$7F
+              debug("rx_serial ", udec(t1), uhex(ptra))
 
-  rx_serial   testp     _sdi                          wc       ' anything waiting?
-    if_nc     ret
-
-              rdpin     t3, _sdi               ' read new byte
-              shr       t3, #24                ' align lsb
-              debug("rx_serial ", udec(t1), udec(ptra))
-
-    _ret_     wrbyte    t2, ptra               ' write head index back to hub
-
-  tx_serial   Testp     _sdo wc                ' check busy flag
-    if_c      ret                              ' abort if busy
-              rdbyte    t2, ptra
-              wypin     t2, _sdo
-              incmod    ptra, #$FF
-              debug("tx_serial ", uhex(ptra), udec(t2))
               djnz      nRegCount, #uart_main
           END
-  repeat until pinr(sck)                                        ' wait for clocking to finish
-  pinf(sdo)                                                       ' disable do
+  repeat until pinr(sck)                ' wait for clocking to finish
+  pinf(sdo)                             ' disable do
 
   debug("shiftinsequence finished ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
@@ -206,7 +197,7 @@ pub shiftin(pDataBffr, nRegCount)| index, mode, bits, value
   wypin(sck, bits)                                              ' start clocking data
   repeat until pinr(sck)                                        ' wait until clocks finished
 
-  value := rdpin(sdi)                                           ' get byte[pDataBffr][index]
+  value := rdpin(sdi)                                           ' get value
 
   if (mode == LSBFIRST)
     value >>= (32-bits)                                         ' align lsb

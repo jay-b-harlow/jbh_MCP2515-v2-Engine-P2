@@ -9,7 +9,7 @@ CON
   REG_CANCTRL     = %0000_1111
 
 OBJ
-  spi: "jbh_sdi_sequence_shifter"
+  spi: "jbh_sdi_sequence-shifter"
 
 
 CON
