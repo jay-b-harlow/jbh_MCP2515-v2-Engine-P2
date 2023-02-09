@@ -188,7 +188,7 @@ uart_main     testb     _sdo, #31                      wc      ' rx in use?
 
   debug("shiftinsequence finished ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
-pub shiftin(pDataBffr, nRegCount)| index, mode, bits
+pub shiftin(pDataBffr, nRegCount)| index, mode, bits, value
   debug("shiftin starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
 '' Shift data in from a synchronous serial device
