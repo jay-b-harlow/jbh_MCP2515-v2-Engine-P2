@@ -11,6 +11,7 @@ CON
 OBJ
   spi: "jbh_ez_spi"
 
+
 CON
   IO    = 0
 
@@ -49,12 +50,13 @@ PUB Main()
   'DEBUG("shiftcmd ")
   'spi.shiftcmd((CMD_READ << 8) | (REG_CANCTRL & $7F), 16)
 
-  debug("Something ")
-  spi.Something(@TSB, TSB_LENGTH)
+  DEBUG("pre-shiftinsequence  ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
+  spi.shiftinsequence(@TSB, TSB_LENGTH)
+  DEBUG("post-shiftinsequence ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
 
   'debug("shiftin " )
   'spi.shiftin(@TSB, TSB_LENGTH)
-
   'debug("shiftout ")
   'spi.shiftout(@TSB, TSB_LENGTH)
 

@@ -1,7 +1,17 @@
 ' =================================================================================================
 ''
-''   File....... jm_ez_spi.spin2
+''   File....... jbh_ez_spi.spin2
 ''   Purpose.... Smart pin Mode 0 SPI routines
+''               added support for variable length parameter arrays
+''   Author..... Jay B. Harlow
+''               Copyright (c) 2023 Jay B. Harlow
+''               -- see below for terms of use
+''   E-mail..... jay_harlow@mail.msn.com
+''   Started....
+''   Updated.... 01 NOV 2023
+''
+''
+''   Original
 ''   Author..... Jon "JonnyMac" McPhalen
 ''               Copyright (c) 2020 Jon McPhalen
 ''               -- see below for terms of use
@@ -14,6 +24,7 @@
 '' =================================================================================================
 
 
+
 con { fixed io pins }
 
   RX1      = 63  { I }                                          ' programming / debug
@@ -23,7 +34,6 @@ con { fixed io pins }
   SF_SCK   = 60  { O }
   SF_SDO   = 59  { O }
   SF_SDI   = 58  { I }
-
 
 con
 
@@ -73,6 +83,7 @@ pub start(sdipin, sdopin, sckpin, khz) : result | m, x
     pinstart(sdo, m, x, 0)                                      ' configure smart pin
     pinf(sdo)                                                   ' disable until used
 
+  debug(ubin(P_PULSE))
   m := P_OE | P_PULSE                                           ' pulses for spi clock
   x.word[0] := 2 #> (clkfreq / (khz*1000)) <# $FFFF             ' ticks in period
   x.word[1] := x.word[0] >> 1                                   ' ticks in low cycle (50%)
@@ -120,71 +131,62 @@ pub shiftcmd(cmd, bits)
   debug("shiftcmd finished")
 
 
-PUB Something(pDataBffr, nRegCount) | _sdo, _sdi, index
-  debug("Something starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
+PUB shiftinsequence(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, t1, t2, t3
+  debug("shiftinsequence starting ", udec(t1), UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
   if (sdo < 0)                                                  ' abort if do not defined
     return
 
-  if (bits < 32)                                              ' adjust alignment if needed
-    cmd <<= (32-bits)
-  cmd rev= 31
+  bits := 8
 
-  wxpin(sdo, %1_00000 | (bits-1))                               ' configure do bits
-  wypin(sdo, cmd)                                               ' load value
-  pinl(sdo)                                                     ' enable do
-  wypin(sck, bits)                                              ' start clocking data
-  repeat until pinr(sck)                                        ' wait for clocking to finish
-  pinf(sdo)                                                     ' disable do
+  'if (bits < 32)                                              ' adjust alignment if needed
+  '  cmd <<= (32-bits)
+  'cmd rev= 31
 
   _sdo := sdo ' #1
   _sdi := sdi ' #0
+  _sck := sck
 
   ptra := pDataBffr
 
+  t1 := 0
 
-' 10M baud 8-bit serial demo
+  wxpin(sdo, %1_00000 | (bits-1))                               ' configure do bits
+  wypin(sdo, ptra)                                              ' load value
+  pinl(sdo)                                                     ' enable do
+  wypin(sck, nRegCount * 8)
 
-          org
+  org
+uart_main     testb     _sdo, #31                      wc      ' rx in use?
+              incmod    t1, #$7F
+              'debug(udec(_sdo), udec(_sdi), udec(_sck), udec(t1))
+  if_nc       call      #rx_serial
 
-                rdbyte  x, ptra
-                wypin   x, _sdi           'send initial byte to tx pin
-                debug(".loop start ", uhex(ptra), udec(x))
-.loop   '       waitx   #200            'uncomment for delay between bytes
-
-.full           testp   _sdi      wc      'wait for buffer empty on tx pin
-          'debug(".full ", uhex(ptra), udec(x))
-        if_nc   jmp     #.full
-
-                incmod  ptra, #$FF          'increment byte
-
-                rdbyte  x, ptra
-                wypin   x,_sdi            'send next byte to tx pin
-                debug(".full ", uhex(ptra), udec(x))
+              testb     _sdi, #31                      wc      ' tx in use?
+  if_nc       call      #tx_serial
 
 
-.recv           testp   _sdo      wc      'wait for smart pin 1 to signal rx data received
-        if_nc   jmp     #.recv
+  rx_serial   testp     _sdi                          wc       ' anything waiting?
+    if_nc     ret
 
-                rdpin   y,_sdo            'get data from rx pin
-                shr     y,#32-8
+              rdpin     t3, _sdi               ' read new byte
+              shr       t3, #24                ' align lsb
+              debug("rx_serial ", udec(t1), udec(ptra))
 
-                wrbyte  y, ptra         'write rx data
+    _ret_     wrbyte    t2, ptra               ' write head index back to hub
 
-                outnot  _sdo            'make scope trigger on pin 1 (since smart pin 1 is
-                outnot  _sdo            '...reading pin 0, pin 1 is still usable for normal output)
-
-                djnz     nRegCount, #.loop          'loop
-                ret
-
-pm_tx           long    %0000_0000_000_0000000000000_01_11110_0 'async tx mode, output enabled for smart output
-pm_rx           long    %0111_0000_000_0000000000000_01_11111_0 'async rx mode, output enabled for normal output, inputs pin 0
-
-bitper          long    8<<16 + 7       'number of clocks per bit period, 3..65536, 8-bit words
-x               long    0
-y               long    0
+  tx_serial   Testp     _sdo wc                ' check busy flag
+    if_c      ret                              ' abort if busy
+              rdbyte    t2, ptra
+              wypin     t2, _sdo
+              incmod    ptra, #$FF
+              debug("tx_serial ", uhex(ptra), udec(t2))
+              djnz      nRegCount, #uart_main
           END
-  debug("Something finished")
+  repeat until pinr(sck)                                        ' wait for clocking to finish
+  pinf(sdo)                                                       ' disable do
+
+  debug("shiftinsequence finished ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
 pub shiftin(pDataBffr, nRegCount)| index, mode, bits
   debug("shiftin starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
@@ -204,14 +206,16 @@ pub shiftin(pDataBffr, nRegCount)| index, mode, bits
   wypin(sck, bits)                                              ' start clocking data
   repeat until pinr(sck)                                        ' wait until clocks finished
 
-  byte[pDataBffr][index] := rdpin(sdi)                                           ' get byte[pDataBffr][index]
+  value := rdpin(sdi)                                           ' get byte[pDataBffr][index]
 
   if (mode == LSBFIRST)
-    byte[pDataBffr][index] >>= (32-bits)                                         ' align lsb
+    value >>= (32-bits)                                         ' align lsb
   else
-    byte[pDataBffr][index] rev= 31                                               ' flip to align lsb
+    value rev= 31                                               ' flip to align lsb
     if (bits < 32)                                              ' clear unused bits
-      byte[pDataBffr][index] zerox= (bits-1)
+      value zerox= (bits-1)
+
+
   debug("shiftin finished")
 
 
