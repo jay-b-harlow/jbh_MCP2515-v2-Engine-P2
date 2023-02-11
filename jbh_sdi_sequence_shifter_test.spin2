@@ -9,8 +9,7 @@ CON
   REG_CANCTRL     = %0000_1111
 
 OBJ
-  spi: "jbh_sdi_sequence-shifter"
-
+  spi: "jbh_sdi_sequence_shifter"
 
 CON
   IO    = 0
@@ -38,7 +37,7 @@ VAR
 PUB Main()
   spi.start(pinSPI_MISO, pinSPI_MOSI, pinSPI_Clk, 10_000)
 
-  'cogspin(NEWCOG, Collector(), @stack1)
+  cogspin(NEWCOG, Collector(), @stack1)
 
   PopulateBuffer(@TSB, TSB_LENGTH)
 
@@ -47,21 +46,21 @@ PUB Main()
 
   pinh(pinCAN_CS)
 
-  'DEBUG("shiftcmd ")
+  'debug("shiftcmd ")
   'spi.shiftcmd((CMD_READ << 8) | (REG_CANCTRL & $7F), 16)
+  'debug("shiftcmd ")
 
-  DEBUG("pre-shiftinsequence  ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+  debug("pre-shiftin " )
+  spi.shiftin(@TSB, TSB_LENGTH)
+  debug("post-shiftin " )
 
-  spi.shiftinsequence(@TSB, TSB_LENGTH)
-  DEBUG("post-shiftinsequence ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
-
-  'debug("shiftin " )
-  'spi.shiftin(@TSB, TSB_LENGTH)
-  'debug("shiftout ")
+  'debug("pre-shiftout ")
   'spi.shiftout(@TSB, TSB_LENGTH)
+  'debug("post-shiftout ")
 
-  'debug("shiftio ")
+  'debug("pre-shiftio ")
   'spi.shiftio(@TSB, TSB_LENGTH)
+  'debug("post-shiftio ")
 
   pinl(pinCAN_CS)
   debug("done...")
