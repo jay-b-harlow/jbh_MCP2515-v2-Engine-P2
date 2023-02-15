@@ -131,8 +131,8 @@ pub shiftcmd(cmd, bits)
   debug("shiftcmd finished")
 
 
-PUB shiftin(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, t1, t2, t3
-  debug("shiftin starting ", udec(t1), UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
+PUB shiftin(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, value
+  debug("shiftin starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
   if (sdi < 0)                                                  ' abort if do not defined
     return
@@ -149,11 +149,10 @@ PUB shiftin(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, t1, t2, t3
 
   ptra := pDataBffr
 
-  t1 := 0
-
   wxpin(sdi, %1_00000 | (bits-1))                               ' configure do bits
 
-  wypin(sdi, ptra)                                              ' load value
+  value := ptra[0]
+  wypin(sdi, value)                                              ' load value
   pinl(sdi)                                                     ' enable do
   wypin(sck, nRegCount * 8)
 
@@ -163,17 +162,22 @@ PUB shiftin(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, t1, t2, t3
 .full           testp   _sdi    wc      'wait for buffer empty on tx pin
         if_nc   jmp     #.full
               incmod    ptra, #$7F
-              debug("tx_serial ", udec(t1), uhex(ptra))
+              rdbyte    value, ptra
+              rev       31                                               ' flip to align lsb
+              zerox     7
+
+              wypin     _sdi, value
+              debug("tx_serial ", udec(value), uhex(ptra))
               djnz      nRegCount, #.loop
           END
-  repeat until pinr(sck)                ' wait for clocking to finish
-  pinf(sdo)                             ' disable do
+          repeat until pinr(sck)                ' wait for clocking to finish
+          pinf(sdo)                             ' disable do
 
   debug("shiftin finished ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
 
 
-pub shiftout(pDataBffr, nRegCount) | mode, bits, value, index, t1, _sdo, _sdi
+pub shiftout(pDataBffr, nRegCount) | mode, bits, value, index, _sdo, _sdi
   debug("shiftout starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 '' Shift data out to a synchronous serial device
 '' -- mode is bit order: LSBFIRST or MSBFIRST
@@ -197,18 +201,20 @@ pub shiftout(pDataBffr, nRegCount) | mode, bits, value, index, t1, _sdo, _sdi
 
 .loop   '       waitx   #200            'uncomment for delay between bytes
 
-.full           testp   _sdi    wc      'wait for buffer empty on tx pin
-        if_nc   jmp     #.full
+.recv           testp   _sdo      wc                     'wait for smart pin 1 to signal rx data received
+        if_nc   jmp     #.recv
               incmod    ptra, #$7F
-              rdword    ptra, t1
-              debug("tx_serial ", udec(t1), uhex(ptra))
+              wrbyte    value, ptra
+              rdpin     value, _sdi
+              debug("rx_serial ", udec(value), uhex(ptra))
+
           djnz      nRegCount, #.loop
           END
   repeat until pinr(sck)               ' wait for clocking to finish
   pinf(sdo)                            ' disable do
   debug("shiftout finished")
 
-pub shiftio(pDataBffr, nRegCount) | mode, bits, inval, outval, index,t1, _sdi, _sdo
+pub shiftio(pDataBffr, nRegCount) | mode, bits, inval, outval, index,t1, t2, _sdi, _sdo
 
   debug("shiftio starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
@@ -226,6 +232,8 @@ pub shiftio(pDataBffr, nRegCount) | mode, bits, inval, outval, index,t1, _sdi, _
       outval <<= (32-bits)
     outval rev= 31                                              ' flip to output from LSB end
 
+  t2 := 0
+
   wxpin(sdo, %1_00000 | (bits-1))                               ' configure do bits
   wypin(sdo, outval)                                            ' load value
   pinl(sdo)                                                     ' enable do
@@ -239,13 +247,15 @@ pub shiftio(pDataBffr, nRegCount) | mode, bits, inval, outval, index,t1, _sdi, _
 
 .full           testp   _sdi    wc                       'wait for buffer empty on tx pin
         if_nc   jmp     #.full
-              incmod    ptra, #$7F
-              debug("tx_serial ", udec(t1), uhex(ptra))
+                incmod    ptra, #$7F
+                incmod    t1, #$7F
+                debug("tx_serial ", udec(t1), uhex(ptra))
 .recv           testp   _sdo      wc                     'wait for smart pin 1 to signal rx data received
         if_nc   jmp     #.recv
 
               incmod    ptra, #$7F
-              debug("rx_serial ", udec(t1), uhex(ptra))
+              incmod    t2, #$7F
+              debug("rx_serial ", udec(t2), uhex(ptra))
 
               djnz      nRegCount, #.loop
           END

@@ -1,0 +1,46 @@
+VAR
+        long _low
+        long _high
+
+PUB reset()| low, high
+' Reset current start time
+  org
+    getct high wc
+    getct low
+  end
+  _low, _high := low, high
+
+PUB elapsed(lable) : low, high | c_low, c_high
+' Get elapsed time
+  c_low, c_high := _low, _high
+  org
+    getct high wc
+    getct low
+    sub   low, c_low wcz
+    subx  high, c_high
+  end
+  debug("elapsed ",udec(c_low), udec(c_high), " ct")
+
+PUB elapsedms(lable) : low, high | c_low, c_high
+' Get elapsed time in milliseconds (ms)
+  c_low, c_high := _low, _high
+  org
+    getct high wc
+    getct low
+    sub low, c_low wcz
+    subx high, c_high
+    ' TODO: convert to millisecond (ms)
+    debug("elapsed ",udec(c_low), udec(c_high), " ms")
+  end
+
+PUB elapsedmu(lable) : low, high | c_low, c_high
+' Get elapsed time in microseconds (mu)
+  c_low, c_high := _low, _high
+  org
+    getct high wc
+    getct low
+    sub low, c_low wcz
+    subx high, c_high
+    ' TODO: convert to microseconds (mu)
+      debug("elapsed ",udec(c_low), udec(c_high), " mu")
+  end
