@@ -229,7 +229,7 @@ CON
 
 
 OBJ
-  spi        : "jbh_ez_spi"
+  spi        : "jm_ez_sdi"
 
 CON
   TSB_Length = $D

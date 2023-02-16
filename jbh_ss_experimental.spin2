@@ -2,8 +2,7 @@
 
 ''   File....... jbh_sdi_sequence_shifter.spin2
 
-''   Purpose.... Smart pin Mode 0 SPI routines
-''               added support for variable length parameter arrays
+''   Purpose.... Added support for variable length parameter arrays
 ''   Author..... Jay B. Harlow
 ''               Copyright (c) 2023 Jay B. Harlow
 ''               -- see below for terms of use
@@ -13,6 +12,7 @@
 ''
 ''
 ''   Original
+''   Purpose.... Smart pin Mode 0 SPI routines
 ''   Author..... Jon "JonnyMac" McPhalen
 ''               Copyright (c) 2020 Jon McPhalen
 ''               -- see below for terms of use
@@ -131,7 +131,7 @@ pub shiftcmd(cmd, bits)
   debug("shiftcmd finished")
 
 
-PUB shiftin(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, value
+PUB shiftDAtaIn(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, value
   debug("shiftin starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
   if (sdi < 0)                                                  ' abort if do not defined
@@ -164,8 +164,7 @@ PUB shiftin(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, value
               incmod    ptra, #$7F
               rdbyte    value, ptra
               rev       31                                               ' flip to align lsb
-              zerox     7
-
+              zerox     value, 7
               wypin     _sdi, value
               debug("tx_serial ", udec(value), uhex(ptra))
               djnz      nRegCount, #.loop
@@ -177,8 +176,8 @@ PUB shiftin(pDataBffr, nRegCount) | bits, _sdo, _sdi, _sck, value
 
 
 
-pub shiftout(pDataBffr, nRegCount) | mode, bits, value, index, _sdo, _sdi
-  debug("shiftout starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
+pub shiftDataOut(pDataBffr, nRegCount) | mode, bits, value, index, _sdo, _sdi
+  debug("shiftDataOut starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 '' Shift data out to a synchronous serial device
 '' -- mode is bit order: LSBFIRST or MSBFIRST
 '' -- value is shifted out
@@ -212,11 +211,11 @@ pub shiftout(pDataBffr, nRegCount) | mode, bits, value, index, _sdo, _sdi
           END
   repeat until pinr(sck)               ' wait for clocking to finish
   pinf(sdo)                            ' disable do
-  debug("shiftout finished")
+  debug("shiftDataOut finished")
 
-pub shiftio(pDataBffr, nRegCount) | mode, bits, inval, outval, index,t1, t2, _sdi, _sdo
+pub shiftDataIO(pDataBffr, nRegCount) | mode, bits, inval, outval, index,t1, t2, _sdi, _sdo
 
-  debug("shiftio starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
+  debug("shiftDataiO starting ", UHEX_BYTE_ARRAY(pDataBffr, nRegCount))
 
 '' Shift outval to a synchronous serial device while receiving inval
 '' -- mode is bit order: LSBFIRST or MSBFIRST

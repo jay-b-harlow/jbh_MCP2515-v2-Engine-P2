@@ -1,16 +1,18 @@
   {Object_Title_and_Purpose}
   DEBUG_LOG_SIZE = 65536
   'debug_main = true
+  DEBUG_TIMESTAMP
 
 CON
    _clkfreq = 180_000_000
+   _stack = 1024
 
   CMD_READ        = %0000_0011
   REG_CANCTRL     = %0000_1111
 
 OBJ
-  spi: "jbh_sdi_sequence_shifter"
-
+  spi: "jbh_sd_experimental"
+  sw:   "stopwatch"
 
 CON
   IO    = 0
@@ -32,10 +34,12 @@ CON
  TSB_LENGTH = $D
 
 VAR
+  byte  referenceTSB[TSB_LENGTH]
   byte  TSB[TSB_LENGTH]
   long  stack1[6]
 
 PUB Main()
+  sw.Reset()
   spi.start(pinSPI_MISO, pinSPI_MOSI, pinSPI_Clk, 10_000)
 
   'cogspin(NEWCOG, Collector(), @stack1)
@@ -44,24 +48,34 @@ PUB Main()
 
   pinh(pinCAN_INT)
   pinh(pinCAN_RESET)
-
   pinh(pinCAN_CS)
 
-  'DEBUG("shiftcmd ")
-  'spi.shiftcmd((CMD_READ << 8) | (REG_CANCTRL & $7F), 16)
+  debug("shiftcmd      ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+  sw.reset()
+  spi.shiftcmd((CMD_READ << 8) | (REG_CANCTRL & $7F), 16)
+  sw.elapsed(@"shiftcmd")
+  debug("shiftcmd      ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
 
-  DEBUG("pre-shiftinsequence  ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+  debug("pre-shiftin   ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+  sw.reset()
+  spi.shiftin(@TSB, TSB_LENGTH)
+  sw.elapsed(@"shiftin")
+  spi.shiftin(@TSB, TSB_LENGTH)
+  sw.elapsed(@"shiftin")
+  debug("post-shiftin  ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
 
-  spi.shiftinsequence(@TSB, TSB_LENGTH)
-  DEBUG("post-shiftinsequence ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
-
-  'debug("shiftin " )
-  'spi.shiftin(@TSB, TSB_LENGTH)
-  'debug("shiftout ")
+  'debug("pre-shiftout  ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+  'sw.reset()
   'spi.shiftout(@TSB, TSB_LENGTH)
+  'sw.elapsed(@"shiftin")
+  'debug("post-shiftout ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
 
-  'debug("shiftio ")
+  'debug("pre-shiftio   ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+  'sw.reset()
   'spi.shiftio(@TSB, TSB_LENGTH)
+  'sw.elapsed(@"shiftio")
+  'debug("post-shiftio  ", UHEX_BYTE_ARRAY(@TSB, TSB_LENGTH))
+
 
   pinl(pinCAN_CS)
   debug("done...")
@@ -70,6 +84,7 @@ PUB Main()
 PUB PopulateBuffer(pDataBffr, nRegCount) | index
   index := 0
   repeat nRegCount
+
     byte[pDataBffr][index] := ++index 'getrnd()
 
 
@@ -86,3 +101,28 @@ PUB Collector() | cs, clk, sdo, sdi, index
       debug(`MyLogic `udec_(index, CLK, CS, SDO, SDI))
 
   cogstop(CogId())
+
+con { license }
+
+{{
+
+  Terms of Use: MIT License
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
+  conditions:
+
+  The above copyright notice and this permission notice shall be included in all copies
+  or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+  PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+  OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+}}
